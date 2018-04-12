@@ -10,12 +10,12 @@ var config = require('../config');
 function getCustomerByCID(customerId) {
     var deferred = Q.defer();
 
-    Customers.findOne({customer_id: customerId}, function(err, customer) {
+    Customers.findById({ _id: customerId }, function(err, customer) {
         if (err) {
             deferred.reject(err);
         }
 
-        if (!_.includes(config.getDisqualifiedCountries, customer.address.country)) {
+        if (_.includes(config.getDisqualifiedCountries(), customer.address.country)) {
             deferred.reject({addressRejected: true});
         }
 
@@ -139,6 +139,8 @@ module.exports = function (app) {
                     res.status(500).json({ reason });
                 }
             })
+        } else {
+            res.status(400).send('Please include customer_id');
         }
     });
 

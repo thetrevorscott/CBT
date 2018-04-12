@@ -78,6 +78,7 @@ function seedCustomers() {
                 console.log(err);
                 throw err;
             }
+            console.log(results);
             return;
         });
     });
