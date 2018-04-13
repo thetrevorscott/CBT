@@ -71,6 +71,20 @@ function seedCustomers() {
                     country: 'US',
                     zip: 90025
                 }
+            },
+            {
+                name: {
+                    first: 'Very',
+                    last: 'Russian'
+                },
+                email: 'dude@russia.com',
+                address: {
+                    street: '1928 Whonose',
+                    city: 'Ecna',
+                    state: 'FL',
+                    country: 'Siberia',
+                    zip: 55555
+                }
             }
         ];
         Customers.create(newCustomers, function(err, results) {
