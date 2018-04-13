@@ -7,6 +7,7 @@ var supplierSchema = new Schema({
         type: String,
         required: true
     },
+    // this could also be placed in environment variable for security
     request_id: {
         type: String,
         required: true

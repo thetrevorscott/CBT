@@ -19,9 +19,9 @@ function getCustomerByCID(customerId) {
             deferred.reject('No customer found');
         } else if (_.includes(config.getDisqualifiedCountries(), customer.address.country)) {
             deferred.reject({ addressRejected: true });
+        } else {
+            deferred.resolve(customer);
         }
-
-        deferred.resolve(customer);
     });
 
     return deferred.promise;
@@ -35,12 +35,17 @@ function getSupplier(make) {
             deferred.reject(err);
         }
 
-        deferred.resolve(supplier);
+        if (!supplier) {
+            deferred.reject('No supplier found');
+        } else {
+            deferred.resolve(supplier);
+        }
     });
 
     return deferred.promise;
 }
 
+// GET AUTH TOKEN FOR API THAT REQUIRES IT
 function getRequestToken(requestData) {
     var deferred = Q.defer();
 
@@ -60,6 +65,7 @@ function getRequestToken(requestData) {
     return deferred.promise;
 }
 
+// FUNCTION FOR HANDLING PLACING ORDERS TO DIFFERENT SUPPLIERS
 function placeOrder(orderData) {
     var deferred = Q.defer();
 
@@ -108,6 +114,7 @@ module.exports = function (app) {
     app.use(bodyParser.urlencoded({ extended: true }));
 
     app.post('/order', function (req, res) {
+        // VALIDATE DATA
         var isDataValid = true;
         var missingValues = [];
         ['make', 'model', 'package', 'customer_id'].forEach(function(itm) {
@@ -117,10 +124,13 @@ module.exports = function (app) {
             }
         });
         if (isDataValid) {
+            // GET AND VALIDATE THE CUSTOMER
             getCustomerByCID(req.body.customer_id)
                 .then(function (customer) {
+                    // GET THE SUPPLIER
                     getSupplier(req.body.make)
                         .then(function (supplier) {
+                            // BUILD AND PLACE THE ORDER
                             var orderData = {
                                 apiURL: supplier.api_url,
                                 tokenURL: supplier.token_url,
@@ -132,6 +142,7 @@ module.exports = function (app) {
 
                             placeOrder(orderData)
                                 .then(function (orderResponse) {
+                                    // STORE ORDER INFO
                                     var newOrder = Orders({
                                         make: req.body.make,
                                         model: req.body.model,
@@ -148,13 +159,16 @@ module.exports = function (app) {
                                         }
                                     })
                                 }, function (reason) {
+                                    // THE ORDER FAILED
                                     res.status(500).json({ reason });
-                                })
+                                });
 
                         }, function (reason) {
+                            // FAILED TO GET THE SUPPLIER
                             res.status(500).json({ reason });
-                        })
+                        });
                 }, function (reason) {
+                    // FAILED TO GET THE CUSTOMER
                     if (reason.addressRejected) {
                         res.status(403).json({ error: 'Address not supported' });
                     } else {
@@ -165,10 +179,12 @@ module.exports = function (app) {
                     res.status(500).json({ error: err });
                 });
         } else {
+            // DATA WAS NOT VAILID
             res.status(400).send('Please include the following values: '+missingValues.join(', '));
         }
     });
 
+    // ENDPOINT TO GET ORDER DOWNLOAD
     app.get('/download/order/:id', function (req, res) {
         Orders.findById({ _id: req.params.id }, function (err, order) {
             if (err) {
@@ -185,6 +201,7 @@ module.exports = function (app) {
         });
     });
 
+    // ADMIN ENDPOINT FOR ORDER REPORT - REQUIRES API KEY
     app.get('/orders', function (req, res) {
         var adminKey = process.env.ADMIN_KEY || '12345';
         if (req.get('admin-key') !== adminKey) {
